@@ -372,8 +372,23 @@ async function init(){
     const { data: gbl } = await supa.from('dossier_global').select('escola,ano_letivo').eq('user_id', userId).single();
     if(gbl){ G.escola = gbl.escola||''; G.anoLetivo = gbl.ano_letivo||''; }
 
-    // Carregar dossier_data para turmas
-    const { data: dd } = await supa.from('dossier_data').select('dados').eq('user_id', userId).eq('ano_letivo', G.anoLetivo||'2025/2026').single();
+    // Carregar dossier_data para turmas — tenta pelo ano do global, senão percorre todos os registos
+    let dd = null;
+    if(G.anoLetivo){
+      const { data: dd1 } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId).eq('ano_letivo', G.anoLetivo).single();
+      if(dd1 && dd1.dados) dd = dd1;
+    }
+    if(!dd){
+      // fallback: procurar em todos os anos o que tem esta turma
+      const { data: allRows } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
+      if(allRows){
+        for(const row of allRows){
+          if(row.dados?.turmas?.find(t => String(t.id) === String(turmaId))){
+            dd = row; G.anoLetivo = row.ano_letivo; break;
+          }
+        }
+      }
+    }
     if(!dd || !dd.dados || !dd.dados.turmas){ showErr('listaErr','Não foi possível carregar os dados da turma.'); document.getElementById('listaLoading').style.display='none'; return; }
 
     const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId));
