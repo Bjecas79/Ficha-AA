@@ -353,7 +353,7 @@ async function init(){
       const { data: lnk, error } = await supa.from('fichas_links')
         .select('turma_id, semestre, user_id')
         .eq('code', code)
-        .single();
+        .maybeSingle();
       if(error || !lnk){ showErr('listaErr','Link inválido ou expirado. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
       turmaId  = lnk.turma_id;
       semestre = lnk.semestre;
@@ -369,13 +369,13 @@ async function init(){
   // Carregar dados da turma e alunos do dossier do professor
   try {
     // Carregar dossier_global para escola
-    const { data: gbl } = await supa.from('dossier_global').select('escola,ano_letivo').eq('user_id', userId).single();
+    const { data: gbl } = await supa.from('dossier_global').select('escola,ano_letivo').eq('user_id', userId).maybeSingle();
     if(gbl){ G.escola = gbl.escola||''; G.anoLetivo = gbl.ano_letivo||''; }
 
     // Carregar dossier_data para turmas — tenta pelo ano do global, senão percorre todos os registos
     let dd = null;
     if(G.anoLetivo){
-      const { data: dd1 } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId).eq('ano_letivo', G.anoLetivo).single();
+      const { data: dd1 } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
       if(dd1 && dd1.dados) dd = dd1;
     }
     if(!dd){
@@ -547,7 +547,7 @@ function preFill(){
 // ── CARREGAR SUBMISSÃO ANTERIOR ───────────────────────────────
 async function carregarSubmissaoAnterior(){
   try {
-    const { data } = await supa.from('fichas_aa').select('dados').eq('user_id',G.userId).eq('turma_id',G.turmaId).eq('semestre',G.semestre).eq('ano_letivo',G.anoLetivo).eq('nome_aluno',G.alunoNome).single();
+    const { data } = await supa.from('fichas_aa').select('dados').eq('user_id',G.userId).eq('turma_id',G.turmaId).eq('semestre',G.semestre).eq('ano_letivo',G.anoLetivo).eq('nome_aluno',G.alunoNome).maybeSingle();
     if(!data || !data.dados) return;
     const d = data.dados;
 
