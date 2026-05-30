@@ -12,7 +12,7 @@
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1a;min-height:100vh}
 /* ── LOGIN / LISTA ────────────────────────────────────── */
 .overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f1f3a 0%,#1a2d4a 60%,#1e3a5f 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
-.box{background:#fff;border-radius:16px;padding:36px 32px;width:420px;max-width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.4)}
+.box{background:#fff;border-radius:16px;padding:28px 28px;width:900px;max-width:98vw;box-shadow:0 24px 80px rgba(0,0,0,0.4)}
 .box-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
 .box-logo img{height:52px;width:auto}
 .box-title{font-size:20px;font-weight:800;color:#1a2d4a;text-align:center;margin-bottom:4px}
@@ -331,14 +331,28 @@ let G = { turmaId:null, turmaName:'', ano:'', anoLetivo:'', semestre:1, escola:'
 // ── URL params ────────────────────────────────────────────────
 function getParams(){
   const p = new URLSearchParams(window.location.search);
-  return { turmaId: p.get('t'), semestre: parseInt(p.get('s')||'1'), userId: p.get('u') };
+  return { code: p.get('c'), turmaId: p.get('t'), semestre: parseInt(p.get('s')||'1'), userId: p.get('u'), anoLetivo: p.get('al') };
 }
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  const {turmaId, semestre, userId} = getParams();
-  if(!turmaId || !userId){ showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
-  G.turmaId = turmaId; G.semestre = semestre; G.userId = userId;
+  const params = getParams();
+  let turmaId, semestre, userId, anoLetivo;
+
+  if(params.code){
+    // Resolver código curto
+    try{
+      const {data, error} = await supa.from('fichas_links').select('*').eq('code', params.code).single();
+      if(error || !data){ showErr('listaErr','Link inválido ou expirado. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
+      turmaId = data.turma_id; semestre = data.semestre; userId = data.user_id; anoLetivo = data.ano_letivo;
+    }catch(e){ showErr('listaErr','Erro ao resolver link: '+e.message); document.getElementById('listaLoading').style.display='none'; return; }
+  } else if(params.turmaId && params.userId){
+    turmaId = params.turmaId; semestre = params.semestre; userId = params.userId; anoLetivo = params.anoLetivo||'';
+  } else {
+    showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return;
+  }
+
+  G.turmaId = turmaId; G.semestre = semestre; G.userId = userId; G.anoLetivo = anoLetivo;
 
   // Carregar dados da turma e alunos do dossier do professor
   try {
@@ -379,14 +393,15 @@ async function init(){
       return;
     }
 
-    listEl.innerHTML = G.alunosList.map(a=>{
+    listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">` +
+    G.alunosList.map(a=>{
       const nome = typeof a==='string'?a:a.nome;
       const ok = submetidos.has(nome);
-      return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')">
-        <span class="aluno-nome">${esc(nome)}</span>
-        <span class="aluno-status ${ok?'status-ok':'status-pendente'}">${ok?'✅ Entregue':'Pendente'}</span>
+      return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')" style="flex-direction:column;align-items:flex-start;gap:5px;padding:10px 12px">
+        <span class="aluno-nome" style="font-size:13px;line-height:1.3">${esc(nome)}</span>
+        <span class="aluno-status ${ok?'status-ok':'status-pendente'}" style="font-size:10px">${ok?'✅ Entregue':'Pendente'}</span>
       </div>`;
-    }).join('');
+    }).join('') + `</div>`;
 
   } catch(e){
     showErr('listaErr','Erro ao carregar dados: '+e.message);
