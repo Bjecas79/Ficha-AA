@@ -355,9 +355,10 @@ async function init(){
         .eq('code', code)
         .maybeSingle();
       if(error || !lnk){ showErr('listaErr','Link inválido ou expirado. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
-      turmaId  = lnk.turma_id;
-      semestre = lnk.semestre;
-      userId   = lnk.user_id;
+      turmaId      = lnk.turma_id;
+      semestre     = lnk.semestre;
+      userId       = lnk.user_id;
+      G.anoLetivo  = lnk.ano_letivo || '';  // usar diretamente o ano do link
     } catch(e){
       showErr('listaErr','Erro ao validar o link. Verifica a tua ligação à internet.'); document.getElementById('listaLoading').style.display='none'; return;
     }
@@ -370,7 +371,7 @@ async function init(){
   try {
     // Carregar dossier_global para escola
     const { data: gbl } = await supa.from('dossier_global').select('escola,ano_letivo').eq('user_id', userId).maybeSingle();
-    if(gbl){ G.escola = gbl.escola||''; G.anoLetivo = gbl.ano_letivo||''; }
+    if(gbl){ G.escola = gbl.escola||''; if(!G.anoLetivo) G.anoLetivo = gbl.ano_letivo||''; }
 
     // Carregar dossier_data para turmas — tenta pelo ano do global, senão percorre todos os registos
     let dd = null;
