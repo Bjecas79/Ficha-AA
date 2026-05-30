@@ -77,6 +77,21 @@ hr.divider { border: none; border-top: 1px solid #f0f0ec; margin: 0.85rem 0; }
   body { background: white; padding: 0; }
   .section-card { break-inside: avoid; }
 }
+@media(max-width:700px){
+  .app { flex-direction: column; }
+  .nota-final-panel {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    gap: 10px;
+    order: 99;
+    margin-top: 12px;
+  }
+  .nota-final-panel .final-card { flex: 1; padding: 1rem 0.5rem; }
+  .nota-final-panel .final-score { font-size: 52px; }
+  .nota-final-panel .pnf-title { display: none; }
+}
 </style>
 </head>
 <body>
