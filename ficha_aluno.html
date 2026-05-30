@@ -27,10 +27,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1
 .err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
 .err.show{display:block}
 /* Lista de alunos */
-.aluno-item{padding:14px 18px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.15s;background:#fff}
+.alunos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.aluno-item{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:4px;transition:all 0.15s;background:#fff}
 .aluno-item:hover{border-color:#2563eb;background:#eff6ff}
-.aluno-nome{font-size:15px;font-weight:600;color:#1a2d4a}
-.aluno-status{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:700}
+.aluno-nome{font-size:13px;font-weight:600;color:#1a2d4a;line-height:1.3}
+.aluno-status{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
+@media(max-width:900px){.alunos-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.alunos-grid{grid-template-columns:repeat(2,1fr)}}
 .status-ok{background:#dcfce7;color:#16a34a}
 .status-pendente{background:#f1f5f9;color:#64748b}
 /* ── FICHA ────────────────────────────────────────────── */
@@ -402,14 +405,14 @@ async function init(){
       return;
     }
 
-    listEl.innerHTML = G.alunosList.map(a=>{
+    listEl.innerHTML = '<div class="alunos-grid">' + G.alunosList.map(a=>{
       const nome = typeof a==='string'?a:a.nome;
       const ok = submetidos.has(nome);
       return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')">
         <span class="aluno-nome">${esc(nome)}</span>
         <span class="aluno-status ${ok?'status-ok':'status-pendente'}">${ok?'✅ Entregue':'Pendente'}</span>
       </div>`;
-    }).join('');
+    }).join('') + '</div>';
 
   } catch(e){
     showErr('listaErr','Erro ao carregar dados: '+e.message);
