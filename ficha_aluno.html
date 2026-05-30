@@ -332,12 +332,34 @@ let G = { turmaId:null, turmaName:'', ano:'', anoLetivo:'', semestre:1, escola:'
 // ── URL params ────────────────────────────────────────────────
 function getParams(){
   const p = new URLSearchParams(window.location.search);
-  return { turmaId: p.get('t'), semestre: parseInt(p.get('s')||'1'), userId: p.get('u') };
+  return {
+    turmaId: p.get('t'),
+    semestre: parseInt(p.get('s')||'1'),
+    userId: p.get('u'),
+    code: p.get('c')
+  };
 }
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  const {turmaId, semestre, userId} = getParams();
+  let {turmaId, semestre, userId, code} = getParams();
+
+  // Resolver código curto (?c=xxxxxx) → turmaId, semestre, userId
+  if(code && (!turmaId || !userId)){
+    try{
+      const { data: lnk, error } = await supa.from('fichas_links')
+        .select('turma_id, semestre, user_id')
+        .eq('code', code)
+        .single();
+      if(error || !lnk){ showErr('listaErr','Link inválido ou expirado. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
+      turmaId  = lnk.turma_id;
+      semestre = lnk.semestre;
+      userId   = lnk.user_id;
+    } catch(e){
+      showErr('listaErr','Erro ao validar o link. Verifica a tua ligação à internet.'); document.getElementById('listaLoading').style.display='none'; return;
+    }
+  }
+
   if(!turmaId || !userId){ showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
   G.turmaId = turmaId; G.semestre = semestre; G.userId = userId;
 
