@@ -12,7 +12,7 @@
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1a;min-height:100vh}
 /* ── LOGIN / LISTA ────────────────────────────────────── */
 .overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f1f3a 0%,#1a2d4a 60%,#1e3a5f 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
-.box{background:#fff;border-radius:16px;padding:28px 28px;width:900px;max-width:98vw;box-shadow:0 24px 80px rgba(0,0,0,0.4)}
+.box{background:#fff;border-radius:16px;padding:36px 32px;width:420px;max-width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.4)}
 .box-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
 .box-logo img{height:52px;width:auto}
 .box-title{font-size:20px;font-weight:800;color:#1a2d4a;text-align:center;margin-bottom:4px}
@@ -119,7 +119,8 @@ select:focus{border-color:#3b82f6}
     <div id="loginErr" class="err"></div>
     <div class="field">
       <label>Palavra-passe</label>
-      <input type="password" id="loginPass" placeholder="nomeDDMMAAAA" autocomplete="off">
+      <input type="password" id="loginPass" placeholder="primeironomeDDMMAAAA" autocomplete="off">
+      <div style="font-size:11px;color:#94a3b8;margin-top:5px">Primeiro nome (minúsculas) + data de nascimento. Ex: <em>afonso20102005</em></div>
     </div>
     <button class="btn-primary" id="loginBtn" onclick="doLogin()">Entrar →</button>
     <div style="margin-top:12px;text-align:center">
@@ -331,28 +332,14 @@ let G = { turmaId:null, turmaName:'', ano:'', anoLetivo:'', semestre:1, escola:'
 // ── URL params ────────────────────────────────────────────────
 function getParams(){
   const p = new URLSearchParams(window.location.search);
-  return { code: p.get('c'), turmaId: p.get('t'), semestre: parseInt(p.get('s')||'1'), userId: p.get('u'), anoLetivo: p.get('al') };
+  return { turmaId: p.get('t'), semestre: parseInt(p.get('s')||'1'), userId: p.get('u') };
 }
 
 // ── INIT ──────────────────────────────────────────────────────
 async function init(){
-  const params = getParams();
-  let turmaId, semestre, userId, anoLetivo;
-
-  if(params.code){
-    // Resolver código curto
-    try{
-      const {data, error} = await supa.from('fichas_links').select('*').eq('code', params.code).single();
-      if(error || !data){ showErr('listaErr','Link inválido ou expirado. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
-      turmaId = data.turma_id; semestre = data.semestre; userId = data.user_id; anoLetivo = data.ano_letivo;
-    }catch(e){ showErr('listaErr','Erro ao resolver link: '+e.message); document.getElementById('listaLoading').style.display='none'; return; }
-  } else if(params.turmaId && params.userId){
-    turmaId = params.turmaId; semestre = params.semestre; userId = params.userId; anoLetivo = params.anoLetivo||'';
-  } else {
-    showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return;
-  }
-
-  G.turmaId = turmaId; G.semestre = semestre; G.userId = userId; G.anoLetivo = anoLetivo;
+  const {turmaId, semestre, userId} = getParams();
+  if(!turmaId || !userId){ showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
+  G.turmaId = turmaId; G.semestre = semestre; G.userId = userId;
 
   // Carregar dados da turma e alunos do dossier do professor
   try {
@@ -393,15 +380,14 @@ async function init(){
       return;
     }
 
-    listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">` +
-    G.alunosList.map(a=>{
+    listEl.innerHTML = G.alunosList.map(a=>{
       const nome = typeof a==='string'?a:a.nome;
       const ok = submetidos.has(nome);
-      return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')" style="flex-direction:column;align-items:flex-start;gap:5px;padding:10px 12px">
-        <span class="aluno-nome" style="font-size:13px;line-height:1.3">${esc(nome)}</span>
-        <span class="aluno-status ${ok?'status-ok':'status-pendente'}" style="font-size:10px">${ok?'✅ Entregue':'Pendente'}</span>
+      return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')">
+        <span class="aluno-nome">${esc(nome)}</span>
+        <span class="aluno-status ${ok?'status-ok':'status-pendente'}">${ok?'✅ Entregue':'Pendente'}</span>
       </div>`;
-    }).join('') + `</div>`;
+    }).join('');
 
   } catch(e){
     showErr('listaErr','Erro ao carregar dados: '+e.message);
@@ -431,20 +417,29 @@ function doLogin(){
   const aluno = G.alunosList.find(a=>(typeof a==='string'?a:a.nome)===G.alunoNome);
   const dataNasc = aluno?.dataNasc||aluno?.data_nasc||'';
 
-  // Gerar palavra-passe esperada: nome sem espaços lowercase + DDMMAAAA
-  const nomeClean = G.alunoNome.toLowerCase().replace(/\s+/g,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  let expected = nomeClean;
+  // Gerar palavra-passe esperada: primeiro nome lowercase + DDMMAAAA
+  const primeiroNome = G.alunoNome.split(' ')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // nome completo sem espaços (compatibilidade com versão anterior)
+  const nomeCompleto = G.alunoNome.toLowerCase().replace(/\s+/g,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  let expectedPrimeiro = primeiroNome;
+  let expectedCompleto = nomeCompleto;
   if(dataNasc){
     // dataNasc formato YYYY-MM-DD → DDMMAAAA
     const parts = dataNasc.split('-');
-    if(parts.length===3) expected += parts[2]+parts[1]+parts[0];
+    if(parts.length===3){
+      const ddmmaaaa = parts[2]+parts[1]+parts[0];
+      expectedPrimeiro += ddmmaaaa;
+      expectedCompleto += ddmmaaaa;
+    }
   }
 
-  if(pass.toLowerCase() === expected || pass === dataNasc.replace(/-/g,'')){
+  const passLower = pass.toLowerCase();
+  if(passLower === expectedPrimeiro || passLower === expectedCompleto || pass === dataNasc.replace(/-/g,'')){
     document.getElementById('screenLogin').style.display='none';
     abrirFicha();
   } else {
-    showErr('loginErr','Palavra-passe incorreta. Tenta: nome+data de nascimento (ex: hugo24061979)');
+    const ex = primeiroNome + (dataNasc ? dataNasc.split('-').reverse().join('') : 'DDMMAAAA');
+    showErr('loginErr',`Palavra-passe incorreta. Tenta: primeiro nome + data de nascimento (ex: ${ex})`);
   }
 }
 
