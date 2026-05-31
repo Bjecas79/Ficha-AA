@@ -458,25 +458,36 @@ async function init(){
     const { data: gbl } = await supa.from('dossier_global').select('escola,ano_letivo').eq('user_id', userId).maybeSingle();
     if(gbl){ G.escola = gbl.escola||''; if(!G.anoLetivo) G.anoLetivo = gbl.ano_letivo||''; }
 
-    // Carregar dossier_data para turmas — tenta pelo ano do global, senão percorre todos os registos
+    // Carregar apenas as turmas e dados de avaliação necessários (não o JSON todo)
+    const semKey = semestre===1 ? 'fitescola1s' : 'fitescola2s';
+    const avalKey1 = `${turmaId}__sem1`;
+    const avalKey2 = `${turmaId}__sem2`;
+    const fitKey  = `${turmaId}__${semKey}`;
+    const fitKey1 = `${turmaId}__fitescola1s`;
+
     let dd = null;
+    const selectFields = `ano_letivo,dados->turmas,dados->avaliacao->${avalKey1},dados->avaliacao->${avalKey2},dados->avaliacao->${fitKey},dados->avaliacao->${fitKey1}`;
+
     if(G.anoLetivo){
-      const { data: dd1 } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
-      if(dd1 && dd1.dados) dd = dd1;
+      const { data: dd1 } = await supa.from('dossier_data')
+        .select('ano_letivo, dados->turmas')
+        .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
+      if(dd1 && dd1.turmas) dd = { ano_letivo: dd1.ano_letivo, dados: { turmas: dd1.turmas } };
     }
     if(!dd){
-      const { data: allRows, error: errAll } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
+      // fallback: buscar só turmas de todos os registos (muito mais leve)
+      const { data: allRows, error: errAll } = await supa.from('dossier_data')
+        .select('ano_letivo, dados->turmas')
+        .eq('user_id', userId);
       if(errAll){ showErr('listaErr',`Erro Supabase: ${errAll.message}`); document.getElementById('listaLoading').style.display='none'; return; }
       if(!allRows || allRows.length===0){ showErr('listaErr',`Sem dados guardados. Pede ao professor para abrir o dossier e guardar.`); document.getElementById('listaLoading').style.display='none'; return; }
-      // procurar em todos os registos — comparar id como string e como número
       for(const row of allRows){
-        const turmas = row.dados?.turmas || [];
+        const turmas = row.turmas || [];
         if(turmas.find(t => String(t.id) === String(turmaId) || t.id == turmaId)){
-          dd = row; G.anoLetivo = row.ano_letivo || ''; break;
+          dd = { ano_letivo: row.ano_letivo, dados: { turmas } }; G.anoLetivo = row.ano_letivo || ''; break;
         }
       }
-      // último recurso: usar registo mais recente
-      if(!dd){ dd = allRows[allRows.length-1]; G.anoLetivo = dd?.ano_letivo||''; }
+      if(!dd){ const last=allRows[allRows.length-1]; dd={ ano_letivo:last?.ano_letivo, dados:{ turmas: last?.turmas||[] } }; G.anoLetivo=dd.ano_letivo||''; }
     }
     if(!dd || !dd.dados){ showErr('listaErr',`Sem dados. Pede ao professor para abrir o dossier.`); document.getElementById('listaLoading').style.display='none'; return; }
     if(!dd.dados.turmas) dd.dados.turmas = [];
@@ -496,12 +507,17 @@ async function init(){
     const { data: fichas } = await supa.from('fichas_aa').select('nome_aluno,updated_at').eq('user_id', userId).eq('turma_id', turmaId).eq('semestre', semestre).eq('ano_letivo', G.anoLetivo);
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
-    // Pré-carregar dados de avaliação (Fitescola + Questão Aula)
-    const semKey = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    G.fitDados = dd.dados.avaliacao?.[`${turmaId}__${semKey}`]?.resultados || {};
-    G.fitDados1s = dd.dados.avaliacao?.[`${turmaId}__fitescola1s`]?.resultados || {};
-    G.avalDados1s = dd.dados.avaliacao?.[`${turmaId}__sem1`] || {};
-    G.avalDados2s = dd.dados.avaliacao?.[`${turmaId}__sem2`] || {};
+    // Carregar dados de avaliação (Fitescola + Questão Aula) — query separada só para esta turma
+    // Carregar dados de avaliação — busca só o objeto avaliacao (muito mais pequeno que dados completo)
+    const { data: avalRow } = await supa.from('dossier_data')
+      .select('dados->avaliacao')
+      .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
+    const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
+    const aval = avalRow?.avaliacao || avalRow || {};
+    G.fitDados   = aval[fitKey]?.resultados  || {};
+    G.fitDados1s = aval[fitKey1]?.resultados || {};
+    G.avalDados1s = aval[avalKey1] || {};
+    G.avalDados2s = aval[avalKey2] || {};
 
     // Mostrar lista
     document.getElementById('listaLoading').style.display='none';
