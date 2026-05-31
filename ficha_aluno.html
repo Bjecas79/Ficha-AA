@@ -11,7 +11,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1a;min-height:100vh}
 /* ── LOGIN / LISTA ────────────────────────────────────── */
-.overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f1f3a 0%,#1a2d4a 60%,#1e3a5f 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0f1f3a 0%,#1a2d4a 60%,#1e3a5f 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+
+/* LOGIN box (mantém compacto) */
 .box{background:#fff;border-radius:16px;padding:36px 32px;width:420px;max-width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.4)}
 .box-logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
 .box-logo img{height:52px;width:auto}
@@ -26,14 +28,55 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1
 .btn-primary:disabled{background:#93c5fd;cursor:not-allowed}
 .err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
 .err.show{display:block}
-/* Lista de alunos */
-.alunos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.aluno-item{padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:4px;transition:all 0.15s;background:#fff}
-.aluno-item:hover{border-color:#2563eb;background:#eff6ff}
-.aluno-nome{font-size:13px;font-weight:600;color:#1a2d4a;line-height:1.3}
-.aluno-status{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
-@media(max-width:900px){.alunos-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:600px){.alunos-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── PAINEL DE LISTA (novo) ───────────────────────────── */
+.lista-panel{background:#fff;border-radius:20px;width:min(860px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 100px rgba(0,0,0,0.45);overflow:hidden}
+.lista-top{padding:28px 32px 0;flex-shrink:0}
+.lista-header-row{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.lista-logo{height:48px;width:auto;flex-shrink:0}
+.lista-titles{flex:1}
+.lista-title{font-size:20px;font-weight:800;color:#1a2d4a;line-height:1.2}
+.lista-subtitle{font-size:13px;color:#64748b;margin-top:2px;font-weight:500}
+.lista-stats{display:flex;gap:8px;margin-left:auto}
+.stat-pill{background:#f1f5f9;border-radius:24px;padding:6px 14px;font-size:12px;font-weight:700;color:#475569;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.stat-pill.ok{background:#dcfce7;color:#15803d}
+.stat-pill.pend{background:#f1f5f9;color:#64748b}
+.lista-search-wrap{position:relative;margin-bottom:18px}
+.lista-search{width:100%;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px 10px 40px;font-size:14px;outline:none;transition:border 0.15s;font-family:inherit;color:#1a1a1a;background:#f8fafc}
+.lista-search:focus{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.08)}
+.lista-search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:16px;pointer-events:none}
+.lista-search-count{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;color:#94a3b8;font-weight:600}
+.lista-body{overflow-y:auto;padding:0 32px 28px;flex:1}
+.lista-body::-webkit-scrollbar{width:5px}
+.lista-body::-webkit-scrollbar-track{background:transparent}
+.lista-body::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:10px}
+
+/* Grid de alunos */
+.alunos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:10px}
+.aluno-item{padding:14px 14px 12px;border:1.5px solid #e8edf4;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:6px;transition:all 0.15s;background:#fff;position:relative;overflow:hidden}
+.aluno-item::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#e2e8f0;transition:background 0.15s}
+.aluno-item:hover{border-color:#93c5fd;background:#f8fbff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,0.1)}
+.aluno-item:hover::before{background:#3b82f6}
+.aluno-item.entregue::before{background:#22c55e}
+.aluno-item.entregue{border-color:#d1fae5;background:#f0fdf4}
+.aluno-item.entregue:hover{border-color:#86efac;background:#ecfdf5}
+.aluno-avatar{width:32px;height:32px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1d4ed8;flex-shrink:0;letter-spacing:0.02em}
+.aluno-item.entregue .aluno-avatar{background:#dcfce7;color:#16a34a}
+.aluno-nome{font-size:12.5px;font-weight:700;color:#1a2d4a;line-height:1.35;word-break:break-word}
+.aluno-status{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:700;letter-spacing:0.02em;margin-top:auto}
+.status-ok{background:#dcfce7;color:#15803d}
+.status-pendente{background:#f1f5f9;color:#64748b}
+.aluno-empty{grid-column:1/-1;text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px}
+
+@media(max-width:680px){
+  .lista-panel{border-radius:14px;max-height:95vh}
+  .lista-top{padding:20px 18px 0}
+  .lista-body{padding:0 18px 20px}
+  .lista-header-row{gap:10px}
+  .lista-stats{display:none}
+  .lista-title{font-size:16px}
+  .alunos-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+}
 .status-ok{background:#dcfce7;color:#16a34a}
 .status-pendente{background:#f1f5f9;color:#64748b}
 /* ── FICHA ────────────────────────────────────────────── */
@@ -99,15 +142,30 @@ select:focus{border-color:#3b82f6}
 
 <!-- ── ECRÃ DE LISTA DE ALUNOS ────────────────────────── -->
 <div class="overlay" id="screenLista">
-  <div class="box">
-    <div class="box-logo">
-      <img src="data:image/png;base64,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" alt="Logo">
+  <div class="lista-panel">
+    <div class="lista-top">
+      <div class="lista-header-row">
+        <img class="lista-logo" id="listaLogoImg" src="" alt="Logo" style="display:none">
+        <div class="lista-titles">
+          <div class="lista-title">Ficha de Autoavaliação</div>
+          <div class="lista-subtitle" id="listaSubtitle">Educação Física</div>
+        </div>
+        <div class="lista-stats" id="listaStats" style="display:none">
+          <div class="stat-pill ok" id="statEntregue">✓ 0 entregues</div>
+          <div class="stat-pill pend" id="statPendente">○ 0 pendentes</div>
+        </div>
+      </div>
+      <div class="lista-search-wrap" id="listaSearchWrap" style="display:none">
+        <span class="lista-search-icon">🔍</span>
+        <input class="lista-search" id="listaSearch" type="text" placeholder="Pesquisar aluno…" oninput="filtrarAlunos()" autocomplete="off">
+        <span class="lista-search-count" id="listaSearchCount"></span>
+      </div>
     </div>
-    <div class="box-title">Ficha de Autoavaliação</div>
-    <div class="box-sub" id="listaSubtitle">Educação Física</div>
-    <div id="listaErr" class="err"></div>
-    <div id="listaLoading" style="text-align:center;color:#64748b;padding:20px;font-size:14px">⏳ A carregar...</div>
-    <div id="listaAlunos" style="display:none"></div>
+    <div class="lista-body">
+      <div id="listaErr" class="err" style="margin-bottom:12px"></div>
+      <div id="listaLoading" style="text-align:center;color:#64748b;padding:40px 20px;font-size:14px">⏳ A carregar turma…</div>
+      <div id="listaAlunos" style="display:none"></div>
+    </div>
   </div>
 </div>
 
@@ -417,23 +475,61 @@ async function init(){
     listEl.style.display='block';
 
     if(G.alunosList.length === 0){
-      listEl.innerHTML = '<p style="text-align:center;color:#64748b;padding:20px">Sem alunos nesta turma.</p>';
+      listEl.innerHTML = '<p class="aluno-empty">Sem alunos nesta turma.</p>';
       return;
     }
 
-    listEl.innerHTML = '<div class="alunos-grid">' + G.alunosList.map(a=>{
-      const nome = typeof a==='string'?a:a.nome;
-      const ok = submetidos.has(nome);
-      return `<div class="aluno-item" onclick="selecionarAluno('${escJ(nome)}')">
-        <span class="aluno-nome">${esc(nome)}</span>
-        <span class="aluno-status ${ok?'status-ok':'status-pendente'}">${ok?'✅ Entregue':'Pendente'}</span>
-      </div>`;
-    }).join('') + '</div>';
+    // Stats
+    const nOk = G.alunosList.filter(a=>submetidos.has(typeof a==='string'?a:a.nome)).length;
+    const nPend = G.alunosList.length - nOk;
+    document.getElementById('statEntregue').textContent = `✓ ${nOk} entregue${nOk!==1?'s':''}`;
+    document.getElementById('statPendente').textContent = `○ ${nPend} pendente${nPend!==1?'s':''}`;
+    document.getElementById('listaStats').style.display='flex';
+    document.getElementById('listaSearchWrap').style.display='block';
+
+    // Logo
+    const logoEl=document.getElementById('listaLogoImg');
+    const loginLogoSrc=document.querySelector('#screenLogin .box-logo img')?.src;
+    if(loginLogoSrc){logoEl.src=loginLogoSrc;logoEl.style.display='block';}
+
+    G._submetidos = submetidos;
+    renderAlunosGrid(G.alunosList);
 
   } catch(e){
     showErr('listaErr','Erro ao carregar dados: '+e.message);
     document.getElementById('listaLoading').style.display='none';
   }
+}
+
+// ── RENDER GRID / FILTRO ──────────────────────────────────────
+function renderAlunosGrid(lista){
+  const listEl = document.getElementById('listaAlunos');
+  const submetidos = G._submetidos || new Set();
+  if(!lista || lista.length===0){
+    listEl.innerHTML='<div class="aluno-empty">Nenhum aluno encontrado.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="alunos-grid">' + lista.map(a=>{
+    const nome = typeof a==='string'?a:a.nome;
+    const ok = submetidos.has(nome);
+    const initials = nome.split(' ').filter(Boolean).slice(0,2).map(p=>p[0].toUpperCase()).join('');
+    return `<div class="aluno-item${ok?' entregue':''}" onclick="selecionarAluno('${escJ(nome)}')">
+      <div class="aluno-avatar">${esc(initials)}</div>
+      <span class="aluno-nome">${esc(nome)}</span>
+      <span class="aluno-status ${ok?'status-ok':'status-pendente'}">${ok?'✓ Entregue':'Pendente'}</span>
+    </div>`;
+  }).join('') + '</div>';
+  document.getElementById('listaSearchCount').textContent = lista.length < G.alunosList.length ? `${lista.length} / ${G.alunosList.length}` : '';
+}
+
+function filtrarAlunos(){
+  const q = (document.getElementById('listaSearch').value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(!q){ renderAlunosGrid(G.alunosList); return; }
+  const filtered = G.alunosList.filter(a=>{
+    const nome = (typeof a==='string'?a:a.nome).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return nome.includes(q);
+  });
+  renderAlunosGrid(filtered);
 }
 
 // ── SELECIONAR ALUNO → LOGIN ──────────────────────────────────
