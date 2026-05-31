@@ -49,14 +49,14 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1
 .lista-search-count{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#94a3b8;font-weight:600}
 
 /* Corpo principal: QR à esquerda, grelha à direita */
-.lista-body{display:flex;gap:18px;padding:0 22px 20px;flex:1;overflow:hidden;min-height:0}
+.lista-body{display:flex;gap:18px;padding:0 22px 20px;flex:1;overflow:hidden;min-height:0;align-items:flex-start}
 
-/* Coluna QR */
-.lista-qr-col{flex-shrink:0;width:168px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
-.lista-qr-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
-.lista-qr-box canvas{display:block;border-radius:6px}
-.lista-qr-label{font-size:10px;font-weight:700;color:#64748b;text-align:center;text-transform:uppercase;letter-spacing:0.04em}
-.lista-qr-hint{font-size:9px;color:#94a3b8;text-align:center;line-height:1.4}
+/* Coluna QR — largura fixa, fica no topo */
+.lista-qr-col{flex-shrink:0;width:172px;display:flex;flex-direction:column;align-items:center;gap:10px;position:sticky;top:0}
+.lista-qr-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;box-sizing:border-box}
+.lista-qr-box img,.lista-qr-box canvas{display:block;border-radius:6px;width:148px!important;height:148px!important}
+.lista-qr-label{font-size:10px;font-weight:700;color:#64748b;text-align:center;text-transform:uppercase;letter-spacing:0.06em}
+.lista-qr-hint{font-size:9px;color:#94a3b8;text-align:center;line-height:1.5}
 
 /* Coluna grelha */
 .lista-grid-col{flex:1;overflow-y:auto;min-width:0}
@@ -182,7 +182,7 @@ select:focus{border-color:#3b82f6}
       <div class="lista-qr-col" id="listaQrCol" style="display:none">
         <div class="lista-qr-box">
           <div class="lista-qr-label">Aponta a câmara</div>
-          <div id="listaQrCanvas" style="width:148px;height:148px;border-radius:6px;overflow:hidden"></div>
+          <div id="listaQrCanvas" style="width:148px;height:148px;border-radius:6px;overflow:hidden;flex-shrink:0"></div>
           <div class="lista-qr-hint">Abre diretamente<br>a tua ficha</div>
         </div>
       </div>
