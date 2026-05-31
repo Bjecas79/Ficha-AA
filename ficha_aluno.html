@@ -512,6 +512,9 @@ async function init(){
     const { data: avalRow } = await supa.from('dossier_data')
       .select('dados->avaliacao')
       .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
+    // DEBUG — mostrar no ecrã o que chegou
+    const dbgEl = document.getElementById('listaErr');
+    if(dbgEl) { dbgEl.className='err show'; dbgEl.textContent = `avalRow: ${JSON.stringify(avalRow).substring(0,300)} | avalKey1:${avalKey1} fitKey:${fitKey}`; }
     const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
     const aval = avalRow?.avaliacao || avalRow || {};
     G.fitDados   = aval[fitKey]?.resultados  || {};
