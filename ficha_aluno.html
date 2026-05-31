@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ficha de Autoavaliação — EF</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -182,7 +182,7 @@ select:focus{border-color:#3b82f6}
       <div class="lista-qr-col" id="listaQrCol" style="display:none">
         <div class="lista-qr-box">
           <div class="lista-qr-label">Aponta a câmara</div>
-          <canvas id="listaQrCanvas"></canvas>
+          <div id="listaQrCanvas" style="width:148px;height:148px;border-radius:6px;overflow:hidden"></div>
           <div class="lista-qr-hint">Abre diretamente<br>a tua ficha</div>
         </div>
       </div>
@@ -521,16 +521,18 @@ async function init(){
 
     // QR code a partir do URL atual
     const qrCol=document.getElementById('listaQrCol');
-    const qrCanvas=document.getElementById('listaQrCanvas');
-    if(qrCanvas && typeof QRCode !== 'undefined'){
-      const currentUrl = window.location.href;
-      QRCode.toCanvas(qrCanvas, currentUrl, {
-        width: 144,
-        margin: 1,
-        color: { dark: '#1a2d4a', light: '#f8fafc' }
-      }, ()=>{
-        qrCol.style.display='flex';
+    const qrDiv=document.getElementById('listaQrCanvas');
+    if(qrDiv && typeof QRCode !== 'undefined'){
+      qrDiv.innerHTML='';
+      new QRCode(qrDiv, {
+        text: window.location.href,
+        width: 148,
+        height: 148,
+        colorDark: '#1a2d4a',
+        colorLight: '#f8fafc',
+        correctLevel: QRCode.CorrectLevel.M
       });
+      qrCol.style.display='flex';
     }
 
     G._submetidos = submetidos;
