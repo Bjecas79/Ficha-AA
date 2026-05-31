@@ -507,14 +507,14 @@ async function init(){
     const { data: fichas } = await supa.from('fichas_aa').select('nome_aluno,updated_at').eq('user_id', userId).eq('turma_id', turmaId).eq('semestre', semestre).eq('ano_letivo', G.anoLetivo);
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
-    // Carregar dados de avaliação (Fitescola + Questão Aula) — query separada só para esta turma
     // Carregar dados de avaliação — busca só o objeto avaliacao
     const { data: avalRow } = await supa.from('dossier_data')
       .select('dados->avaliacao')
       .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
     const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    // Supabase com dados->avaliacao devolve {avaliacao:{...}} ou directamente o objecto
-    const aval = (avalRow?.avaliacao && typeof avalRow.avaliacao === 'object') ? avalRow.avaliacao : (avalRow || {});
+    // O debug mostrou que avalRow TEM as chaves directamente (ex: avalRow['1779...sem1'])
+    // Supabase com dados->avaliacao devolve o valor do campo como objecto directo
+    const aval = avalRow || {};
     G.fitDados   = aval[fitKey]?.resultados  || {};
     G.fitDados1s = aval[fitKey1]?.resultados || {};
     G.avalDados1s = aval[avalKey1] || {};
@@ -702,9 +702,9 @@ function preFill(){
     }
   });
 
-  // Questão Aula — 1ºS sempre pré-preenchido (readonly), 2ºS só no semestre 2
-  const qa1 = G.avalDados1s?.notas?.[nome] !== undefined ? G.avalDados1s.notas[nome] : (G.avalDados1s?.questaoAula?.[nome] ?? '');
-  const qa2 = G.avalDados2s?.notas?.[nome] !== undefined ? G.avalDados2s.notas[nome] : (G.avalDados2s?.questaoAula?.[nome] ?? '');
+  // Questão Aula — busca conhecClassif do 1ºS (classificação de conhecimentos do professor)
+  const qa1 = G.avalDados1s?.conhecClassif?.[nome] ?? G.avalDados1s?.notas?.[nome] ?? G.avalDados1s?.questaoAula?.[nome] ?? '';
+  const qa2 = G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
 
   // Tentar buscar da estrutura real do dossier
   const q1El = document.getElementById('questao-nota-s1');
