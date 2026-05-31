@@ -507,18 +507,17 @@ async function init(){
     const { data: fichas } = await supa.from('fichas_aa').select('nome_aluno,updated_at').eq('user_id', userId).eq('turma_id', turmaId).eq('semestre', semestre).eq('ano_letivo', G.anoLetivo);
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
-    // Carregar dados de avaliação — busca só o objeto avaliacao
-    const { data: avalRow } = await supa.from('dossier_data')
-      .select('dados->avaliacao')
+    // Carregar dados de avaliação — busca dados completos para esta turma/ano
+    // (necessário para aceder a avaliacao[turmaId__sem1] etc.)
+    const { data: avalFull } = await supa.from('dossier_data')
+      .select('dados')
       .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
     const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    // O debug mostrou que avalRow TEM as chaves directamente (ex: avalRow['1779...sem1'])
-    // Supabase com dados->avaliacao devolve o valor do campo como objecto directo
-    const aval = avalRow || {};
-    G.fitDados   = aval[fitKey]?.resultados  || {};
-    G.fitDados1s = aval[fitKey1]?.resultados || {};
-    G.avalDados1s = aval[avalKey1] || {};
-    G.avalDados2s = aval[avalKey2] || {};
+    const avalObj = avalFull?.dados?.avaliacao || {};
+    G.fitDados   = avalObj[fitKey]?.resultados  || {};
+    G.fitDados1s = avalObj[fitKey1]?.resultados || {};
+    G.avalDados1s = avalObj[avalKey1] || {};
+    G.avalDados2s = avalObj[avalKey2] || {};
 
     // Mostrar lista
     document.getElementById('listaLoading').style.display='none';
