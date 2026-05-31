@@ -51,8 +51,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1
 /* Corpo principal: QR à esquerda, grelha à direita */
 .lista-body{display:flex;gap:18px;padding:0 22px 20px;flex:1;overflow:hidden;min-height:0;align-items:flex-start}
 
-/* Coluna QR — largura fixa, fica no topo */
-.lista-qr-col{flex-shrink:0;width:172px;display:flex;flex-direction:column;align-items:center;gap:10px;position:sticky;top:0}
+/* Coluna QR — largura fixa, centrada verticalmente */
+.lista-qr-col{flex-shrink:0;width:172px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;align-self:stretch}
 .lista-qr-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:14px 12px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;box-sizing:border-box}
 .lista-qr-box img,.lista-qr-box canvas{display:block;border-radius:6px;width:148px!important;height:148px!important}
 .lista-qr-label{font-size:10px;font-weight:700;color:#64748b;text-align:center;text-transform:uppercase;letter-spacing:0.06em}
@@ -475,7 +475,7 @@ async function init(){
         }
       }
     }
-    if(!dd || !dd.dados || !dd.dados.turmas){ showErr('listaErr','Não foi possível carregar os dados da turma.'); document.getElementById('listaLoading').style.display='none'; return; }
+    if(!dd || !dd.dados || !dd.dados.turmas){ showErr('listaErr',`Não foi possível carregar os dados da turma. (turmaId:${turmaId} userId:${userId} ano:${G.anoLetivo})`); document.getElementById('listaLoading').style.display='none'; return; }
 
     const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId));
     if(!turma){ showErr('listaErr','Turma não encontrada.'); document.getElementById('listaLoading').style.display='none'; return; }
