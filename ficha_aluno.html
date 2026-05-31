@@ -802,9 +802,9 @@ function preFill(){
   preFillFitescola(G.fitDados1s, 's1', aluno);
   if(sem===2) preFillFitescola(G.fitDados, 's2', aluno);
 
-  // Questão Aula — busca conhecClassif do 1ºS (classificação de conhecimentos do professor)
+  // Questão Aula — 1ºS: conhecClassif | 2ºS: conhecClassif2s (coluna "Class. 2ºS" do dossier)
   const qa1 = G.avalDados1s?.conhecClassif?.[nome] ?? G.avalDados1s?.notas?.[nome] ?? G.avalDados1s?.questaoAula?.[nome] ?? '';
-  const qa2 = G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
+  const qa2 = G.avalDados2s?.conhecClassif2s?.[nome] ?? G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
 
   const q1El = document.getElementById('questao-nota-s1');
   const q2El = document.getElementById('questao-nota-s2');
