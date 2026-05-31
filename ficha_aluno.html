@@ -691,30 +691,121 @@ async function abrirFicha(){
   window.scrollTo(0,0);
 }
 
+// ── TABELAS FITESCOLA (copiadas do Dossier) ───────────────────
+function calcIdade(dataNasc, anoLetivo){
+  if(!dataNasc) return null;
+  const nasc=new Date(dataNasc);
+  if(isNaN(nasc)) return null;
+  const refDate=new Date(`${anoLetivo}-09-15`);
+  let i=refDate.getFullYear()-nasc.getFullYear();
+  const m=refDate.getMonth()-nasc.getMonth();
+  if(m<0||(m===0&&refDate.getDate()<nasc.getDate())) i--;
+  return i;
+}
+
+const FITESCOLA_TB={
+  F:{
+     9:{vaivem:[13,32],abdom:[9,39],flexBracos:[6,14],iHoriz:[108.4,170.9],agilidade:[13.20,11.73],sentaAlcanca:[22.9,31.2]},
+    10:{vaivem:[16,35],abdom:[12,39],flexBracos:[7,15],iHoriz:[110.8,172.4],agilidade:[13.10,11.67],sentaAlcanca:[22.9,31.2]},
+    11:{vaivem:[20,39],abdom:[15,46],flexBracos:[7,15],iHoriz:[113.3,173.8],agilidade:[13.00,11.61],sentaAlcanca:[25.4,31.4]},
+    12:{vaivem:[22,43],abdom:[18,53],flexBracos:[7,15],iHoriz:[115.8,175.3],agilidade:[12.90,11.55],sentaAlcanca:[25.4,32.1]},
+    13:{vaivem:[25,45],abdom:[18,57],flexBracos:[7,16],iHoriz:[118.1,176.4],agilidade:[12.80,11.50],sentaAlcanca:[25.4,33.3]},
+    14:{vaivem:[27,47],abdom:[18,59],flexBracos:[7,16],iHoriz:[121.8,179.6],agilidade:[12.70,11.40],sentaAlcanca:[25.4,34.6]},
+    15:{vaivem:[29,48],abdom:[18,62],flexBracos:[7,17],iHoriz:[123.0,179.0],agilidade:[12.70,11.40],sentaAlcanca:[30.5,35.3]},
+    16:{vaivem:[32,50],abdom:[18,63],flexBracos:[7,18],iHoriz:[126.0,180.4],agilidade:[12.60,11.30],sentaAlcanca:[30.5,35.6]},
+    17:{vaivem:[35,51],abdom:[18,65],flexBracos:[7,19],iHoriz:[129.5,183.4],agilidade:[12.60,11.40],sentaAlcanca:[30.5,36.0]},
+    18:{vaivem:[37,50],abdom:[18,66],flexBracos:[7,19],iHoriz:[131.9,184.2],agilidade:[12.60,11.40],sentaAlcanca:[30.5,36.3]},
+  },
+  M:{
+     9:{vaivem:[13,47],abdom:[9,47],flexBracos:[6,17],iHoriz:[102.1,160.0],agilidade:[13.10,11.98],sentaAlcanca:[20.3,29.3]},
+    10:{vaivem:[16,50],abdom:[12,47],flexBracos:[7,21],iHoriz:[110.2,170.2],agilidade:[12.80,11.65],sentaAlcanca:[20.3,29.3]},
+    11:{vaivem:[20,54],abdom:[15,54],flexBracos:[8,21],iHoriz:[119.0,180.4],agilidade:[12.50,11.38],sentaAlcanca:[20.3,28.9]},
+    12:{vaivem:[23,59],abdom:[18,60],flexBracos:[10,21],iHoriz:[128.4,190.6],agilidade:[12.20,11.11],sentaAlcanca:[20.3,28.8]},
+    13:{vaivem:[28,67],abdom:[21,66],flexBracos:[12,22],iHoriz:[135.4,197.3],agilidade:[12.00,10.90],sentaAlcanca:[20.3,29.2]},
+    14:{vaivem:[36,77],abdom:[24,71],flexBracos:[14,24],iHoriz:[151.5,213.3],agilidade:[11.70,10.60],sentaAlcanca:[20.3,30.4]},
+    15:{vaivem:[42,85],abdom:[24,71],flexBracos:[16,27],iHoriz:[165.4,224.4],agilidade:[11.20,10.20],sentaAlcanca:[20.3,31.9]},
+    16:{vaivem:[47,91],abdom:[24,71],flexBracos:[18,29],iHoriz:[175.9,231.8],agilidade:[10.90,9.90],sentaAlcanca:[20.3,33.5]},
+    17:{vaivem:[50,94],abdom:[24,71],flexBracos:[18,32],iHoriz:[184.2,239.0],agilidade:[10.90,9.90],sentaAlcanca:[20.3,34.5]},
+    18:{vaivem:[53,96],abdom:[24,71],flexBracos:[18,34],iHoriz:[203.2,251.7],agilidade:[10.40,9.49],sentaAlcanca:[20.3,35.0]},
+  }
+};
+
+// Mapeamento: índice fitescolaTests → chave FITESCOLA_TB
+// fit-0 Vai-Vem, fit-1 Abdominais, fit-2 Flexões, fit-3 Senta e alcança, fit-4 Agilidade/imp.horiz.
+const FIT_MAP = [
+  {id:'vaivem',      higher:true},
+  {id:'abdom',       higher:true},
+  {id:'flexBracos',  higher:true},
+  {id:'sentaAlcanca',higher:true},
+  {id:'iHoriz',      higher:true},
+];
+
+function fitBadge(val, ref, higher){
+  if(val===''||val===null||val===undefined||!ref) return '';
+  const v=parseFloat(String(val).replace(',','.'));
+  if(isNaN(v)) return '';
+  const refSaud=ref[0], refAtl=ref[1];
+  if(higher){
+    if(v>=refAtl) return 'atl';
+    if(v>=refSaud) return 'ok';
+    return 'pm';
+  } else {
+    if(v<=refAtl) return 'atl';
+    if(v<=refSaud) return 'ok';
+    return 'pm';
+  }
+}
+
+// badge → valor do select da ficha AA (PM=0, ZS=0.5, PA=1)
+function badgeToSelectVal(badge){
+  if(badge==='atl') return '1';
+  if(badge==='ok')  return '0.5';
+  if(badge==='pm')  return '0';
+  return '';
+}
+
+function preFillFitescola(fitResultados, semSuffix, aluno){
+  if(!fitResultados) return;
+  const res = fitResultados[G.alunoNome] || {};
+  if(!Object.keys(res).length) return;
+
+  const gen = (aluno?.genero||aluno?.género||'').toUpperCase();
+  const anoLetivo = parseInt((G.anoLetivo||'2025/2026').split('/')[0]);
+  const dataNasc = aluno?.dataNasc||aluno?.data_nasc||'';
+  const idadeNum = calcIdade(dataNasc, anoLetivo);
+  const idade = idadeNum===null ? null : Math.max(9, Math.min(18, idadeNum));
+  const refGen = (gen==='M'||gen==='F') ? FITESCOLA_TB[gen] : null;
+  const ref = refGen && idade ? refGen[idade] : null;
+
+  FIT_MAP.forEach((t, i) => {
+    const el = document.getElementById(`fit-${i}-${semSuffix}`);
+    if(!el) return;
+    const val = res[t.id];
+    if(val===undefined||val==='') return;
+    const badge = fitBadge(val, ref?.[t.id], t.higher);
+    const selectVal = badgeToSelectVal(badge);
+    if(selectVal!=='') {
+      el.value = selectVal;
+      el.disabled = true;
+      el.style.background = '#fffbeb';
+    }
+  });
+}
+
 // ── PRÉ-PREENCHER ─────────────────────────────────────────────
 function preFill(){
   const nome = G.alunoNome;
   const sem = G.semestre;
+  const aluno = G.alunosList.find(a=>(typeof a==='string'?a:a.nome)===nome);
 
-  // FITescola — pré-preencher com dados do dossier (readonly)
-  fitescolaTests.forEach((_,i)=>{
-    const el1s = document.getElementById(`fit-${i}-s1`);
-    const el2s = document.getElementById(`fit-${i}-s2`);
-    if(el1s){
-      const v = G.fitDados1s?.[nome]?.[i] ?? G.fitDados1s?.[nome]?.[fitescolaTests[i]] ?? '';
-      if(v!==undefined && v!=='') { el1s.value=v; el1s.disabled=true; el1s.style.background='#fffbeb'; }
-    }
-    if(el2s && sem===2){
-      const v2 = G.fitDados?.[nome]?.[i] ?? G.fitDados?.[nome]?.[fitescolaTests[i]] ?? '';
-      if(v2!==undefined && v2!=='') { el2s.value=v2; el2s.disabled=true; el2s.style.background='#fffbeb'; }
-    }
-  });
+  // FITescola — valor bruto → badge (PM/OK/Atl) → valor do select (0/0.5/1)
+  preFillFitescola(G.fitDados1s, 's1', aluno);
+  if(sem===2) preFillFitescola(G.fitDados, 's2', aluno);
 
   // Questão Aula — busca conhecClassif do 1ºS (classificação de conhecimentos do professor)
   const qa1 = G.avalDados1s?.conhecClassif?.[nome] ?? G.avalDados1s?.notas?.[nome] ?? G.avalDados1s?.questaoAula?.[nome] ?? '';
   const qa2 = G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
 
-  // Tentar buscar da estrutura real do dossier
   const q1El = document.getElementById('questao-nota-s1');
   const q2El = document.getElementById('questao-nota-s2');
 
