@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ficha de Autoavaliação — EF</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -30,52 +31,64 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f4f2;color:#1a1a1
 .err.show{display:block}
 
 /* ── PAINEL DE LISTA (novo) ───────────────────────────── */
-.lista-panel{background:#fff;border-radius:20px;width:min(980px,calc(100vw - 32px));height:min(660px,calc(100vh - 32px));display:flex;flex-direction:column;box-shadow:0 32px 100px rgba(0,0,0,0.45);overflow:hidden}
-.lista-top{padding:20px 24px 0;flex-shrink:0}
-.lista-header-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.lista-logo{height:38px;width:auto;flex-shrink:0}
+.lista-panel{background:#fff;border-radius:20px;width:min(1100px,calc(100vw - 32px));height:min(680px,calc(100vh - 32px));display:flex;flex-direction:column;box-shadow:0 32px 100px rgba(0,0,0,0.45);overflow:hidden}
+.lista-top{padding:18px 22px 0;flex-shrink:0}
+.lista-header-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.lista-logo{height:36px;width:auto;flex-shrink:0}
 .lista-titles{flex:1}
-.lista-title{font-size:17px;font-weight:800;color:#1a2d4a;line-height:1.2}
-.lista-subtitle{font-size:12px;color:#64748b;margin-top:1px;font-weight:500}
+.lista-title{font-size:16px;font-weight:800;color:#1a2d4a;line-height:1.2}
+.lista-subtitle{font-size:11px;color:#64748b;margin-top:1px;font-weight:500}
 .lista-stats{display:flex;gap:6px;margin-left:auto}
-.stat-pill{background:#f1f5f9;border-radius:24px;padding:4px 11px;font-size:11px;font-weight:700;color:#475569;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.stat-pill{background:#f1f5f9;border-radius:24px;padding:4px 11px;font-size:11px;font-weight:700;color:#475569;white-space:nowrap}
 .stat-pill.ok{background:#dcfce7;color:#15803d}
 .stat-pill.pend{background:#f1f5f9;color:#64748b}
-.lista-search-wrap{position:relative;margin-bottom:14px}
-.lista-search{width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:7px 12px 7px 34px;font-size:13px;outline:none;transition:border 0.15s;font-family:inherit;color:#1a1a1a;background:#f8fafc}
+.lista-search-wrap{position:relative;margin-bottom:12px}
+.lista-search{width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:7px 12px 7px 32px;font-size:12px;outline:none;transition:border 0.15s;font-family:inherit;color:#1a1a1a;background:#f8fafc}
 .lista-search:focus{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.08)}
-.lista-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px;pointer-events:none}
+.lista-search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px;pointer-events:none}
 .lista-search-count{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#94a3b8;font-weight:600}
-.lista-body{overflow-y:auto;padding:0 24px 20px;flex:1}
-.lista-body::-webkit-scrollbar{width:4px}
-.lista-body::-webkit-scrollbar-track{background:transparent}
-.lista-body::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:10px}
 
-/* Grid de alunos — 7 colunas, cabe ~28 em 4 linhas */
-.alunos-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
-.aluno-item{padding:9px 10px 8px;border:1.5px solid #e8edf4;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:4px;transition:all 0.15s;background:#fff;position:relative;overflow:hidden}
+/* Corpo principal: QR à esquerda, grelha à direita */
+.lista-body{display:flex;gap:18px;padding:0 22px 20px;flex:1;overflow:hidden;min-height:0}
+
+/* Coluna QR */
+.lista-qr-col{flex-shrink:0;width:168px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.lista-qr-box{background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+.lista-qr-box canvas{display:block;border-radius:6px}
+.lista-qr-label{font-size:10px;font-weight:700;color:#64748b;text-align:center;text-transform:uppercase;letter-spacing:0.04em}
+.lista-qr-hint{font-size:9px;color:#94a3b8;text-align:center;line-height:1.4}
+
+/* Coluna grelha */
+.lista-grid-col{flex:1;overflow-y:auto;min-width:0}
+.lista-grid-col::-webkit-scrollbar{width:4px}
+.lista-grid-col::-webkit-scrollbar-track{background:transparent}
+.lista-grid-col::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:10px}
+
+/* Grid 6 colunas fixas */
+.alunos-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.aluno-item{padding:8px 9px 7px;border:1.5px solid #e8edf4;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:4px;transition:all 0.15s;background:#fff;position:relative;overflow:hidden}
 .aluno-item::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#e2e8f0;transition:background 0.15s}
-.aluno-item:hover{border-color:#93c5fd;background:#f8fbff;transform:translateY(-1px);box-shadow:0 3px 12px rgba(37,99,235,0.1)}
+.aluno-item:hover{border-color:#93c5fd;background:#f8fbff;transform:translateY(-1px);box-shadow:0 3px 10px rgba(37,99,235,0.1)}
 .aluno-item:hover::before{background:#3b82f6}
 .aluno-item.entregue::before{background:#22c55e}
 .aluno-item.entregue{border-color:#d1fae5;background:#f0fdf4}
 .aluno-item.entregue:hover{border-color:#86efac;background:#ecfdf5}
-.aluno-avatar{width:26px;height:26px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#1d4ed8;flex-shrink:0;letter-spacing:0.02em}
+.aluno-avatar{width:24px;height:24px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#1d4ed8;flex-shrink:0}
 .aluno-item.entregue .aluno-avatar{background:#dcfce7;color:#16a34a}
 .aluno-nome{font-size:11px;font-weight:700;color:#1a2d4a;line-height:1.3;word-break:break-word}
-.aluno-status{font-size:9px;padding:2px 6px;border-radius:20px;font-weight:700;letter-spacing:0.02em;margin-top:auto}
+.aluno-status{font-size:9px;padding:2px 5px;border-radius:20px;font-weight:700;margin-top:auto}
 .status-ok{background:#dcfce7;color:#15803d}
 .status-pendente{background:#f1f5f9;color:#64748b}
 .aluno-empty{grid-column:1/-1;text-align:center;padding:30px 20px;color:#94a3b8;font-size:14px}
 
 @media(max-width:800px){
   .lista-panel{border-radius:14px;height:calc(100vh - 24px)}
-  .lista-top{padding:16px 16px 0}
-  .lista-body{padding:0 16px 16px}
-  .lista-header-row{gap:8px}
+  .lista-top{padding:14px 14px 0}
+  .lista-body{flex-direction:column;gap:12px;padding:0 14px 14px;overflow-y:auto}
+  .lista-qr-col{width:100%;flex-direction:row;justify-content:flex-start}
+  .lista-qr-box{width:auto;flex-direction:row;padding:8px 12px}
   .lista-stats{display:none}
-  .lista-title{font-size:15px}
-  .alunos-grid{grid-template-columns:repeat(4,1fr);gap:6px}
+  .alunos-grid{grid-template-columns:repeat(4,1fr)}
 }
 @media(max-width:480px){
   .alunos-grid{grid-template-columns:repeat(3,1fr)}
@@ -165,9 +178,20 @@ select:focus{border-color:#3b82f6}
       </div>
     </div>
     <div class="lista-body">
-      <div id="listaErr" class="err" style="margin-bottom:12px"></div>
-      <div id="listaLoading" style="text-align:center;color:#64748b;padding:40px 20px;font-size:14px">⏳ A carregar turma…</div>
-      <div id="listaAlunos" style="display:none"></div>
+      <!-- Coluna QR -->
+      <div class="lista-qr-col" id="listaQrCol" style="display:none">
+        <div class="lista-qr-box">
+          <div class="lista-qr-label">Aponta a câmara</div>
+          <canvas id="listaQrCanvas"></canvas>
+          <div class="lista-qr-hint">Abre diretamente<br>a tua ficha</div>
+        </div>
+      </div>
+      <!-- Coluna grelha -->
+      <div class="lista-grid-col">
+        <div id="listaErr" class="err" style="margin-bottom:10px"></div>
+        <div id="listaLoading" style="text-align:center;color:#64748b;padding:40px 20px;font-size:14px">⏳ A carregar turma…</div>
+        <div id="listaAlunos" style="display:none"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -494,6 +518,20 @@ async function init(){
     const logoEl=document.getElementById('listaLogoImg');
     const loginLogoSrc=document.querySelector('#screenLogin .box-logo img')?.src;
     if(loginLogoSrc){logoEl.src=loginLogoSrc;logoEl.style.display='block';}
+
+    // QR code a partir do URL atual
+    const qrCol=document.getElementById('listaQrCol');
+    const qrCanvas=document.getElementById('listaQrCanvas');
+    if(qrCanvas && typeof QRCode !== 'undefined'){
+      const currentUrl = window.location.href;
+      QRCode.toCanvas(qrCanvas, currentUrl, {
+        width: 144,
+        margin: 1,
+        color: { dark: '#1a2d4a', light: '#f8fafc' }
+      }, ()=>{
+        qrCol.style.display='flex';
+      });
+    }
 
     G._submetidos = submetidos;
     renderAlunosGrid(G.alunosList);
