@@ -465,6 +465,20 @@ async function init(){
   if(!turmaId || !userId){ showErr('listaErr','Link inválido. Pede ao professor um novo link.'); document.getElementById('listaLoading').style.display='none'; return; }
   G.turmaId = turmaId; G.semestre = semestre; G.userId = userId;
 
+  // Se é ficha do 1º semestre, desativar visualmente o painel do 2º semestre
+  if(semestre === 1){
+    const panel2 = document.getElementById('final-2s')?.closest('.nota-panel');
+    if(panel2){
+      panel2.style.background = '#f1f5f9';
+      panel2.style.borderColor = '#cbd5e1';
+      panel2.style.opacity = '0.55';
+    }
+    const score2 = document.getElementById('final-2s');
+    if(score2){ score2.textContent = '—'; score2.style.color = '#94a3b8'; }
+    const sub2 = document.getElementById('final-sub-2s');
+    if(sub2){ sub2.textContent = 'disponível no 2º semestre'; }
+  }
+
   // Carregar dados da turma e alunos do dossier do professor
   try {
     // Carregar dossier_global para escola
@@ -1003,10 +1017,16 @@ function calcAll(){
   const atHasAny=at1sSelected||at2sSelected;
   const fn2s=(avcc_2s!==null||atHasAny)?(cc2s*0.85+atMedia*0.15):null;
   document.getElementById('final-1s').textContent=fn1s!==null?Math.round(fn1s):'—';
-  document.getElementById('final-2s').textContent=fn2s!==null?Math.round(fn2s):'—';
-  const ano789=['7º','8º','9º'].includes(getAno()); const subText=ano789?'Percentagem (0–100)':'valores (0–20)';
-  document.getElementById('final-sub-1s').textContent=subText;
-  document.getElementById('final-sub-2s').textContent=subText;
+  if(G.semestre !== 1){
+    document.getElementById('final-2s').textContent=fn2s!==null?Math.round(fn2s):'—';
+    const ano789=['7º','8º','9º'].includes(getAno()); const subText=ano789?'Percentagem (0–100)':'valores (0–20)';
+    document.getElementById('final-sub-1s').textContent=subText;
+    document.getElementById('final-sub-2s').textContent=subText;
+  } else {
+    const ano789=['7º','8º','9º'].includes(getAno()); const subText=ano789?'Percentagem (0–100)':'valores (0–20)';
+    document.getElementById('final-sub-1s').textContent=subText;
+    // final-2s fica com '—' e 'disponível no 2º semestre' definidos no init
+  }
 }
 
 // ── RECOLHER DADOS PARA GUARDAR ───────────────────────────────
