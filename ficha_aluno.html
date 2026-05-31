@@ -465,17 +465,26 @@ async function init(){
       if(dd1 && dd1.dados) dd = dd1;
     }
     if(!dd){
-      // fallback: procurar em todos os anos o que tem esta turma
-      const { data: allRows } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
-      if(allRows){
+      // fallback: percorrer todos os registos e encontrar o que tem esta turma
+      const { data: allRows, error: errAll } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
+      if(allRows && allRows.length > 0){
+        // primeiro tenta match exacto por turma id
         for(const row of allRows){
-          if(row.dados?.turmas?.find(t => String(t.id) === String(turmaId))){
-            dd = row; G.anoLetivo = row.ano_letivo; break;
+          const turmas = row.dados?.turmas || [];
+          if(turmas.find(t => String(t.id) === String(turmaId))){
+            dd = row; G.anoLetivo = row.ano_letivo || ''; break;
           }
+        }
+        // se ainda não encontrou, usa o registo mais recente (último guardado)
+        if(!dd){
+          dd = allRows[allRows.length - 1];
+          G.anoLetivo = dd?.ano_letivo || '';
         }
       }
     }
-    if(!dd || !dd.dados || !dd.dados.turmas){ showErr('listaErr',`Não foi possível carregar os dados da turma. (turmaId:${turmaId} userId:${userId} ano:${G.anoLetivo})`); document.getElementById('listaLoading').style.display='none'; return; }
+    if(!dd || !dd.dados){ showErr('listaErr',`Erro ao carregar dados. (t:${turmaId} u:${userId} ano:${G.anoLetivo})`); document.getElementById('listaLoading').style.display='none'; return; }
+    // se não tem turmas, criar array vazio para não crashar
+    if(!dd.dados.turmas) dd.dados.turmas = [];
 
     const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId));
     if(!turma){ showErr('listaErr','Turma não encontrada.'); document.getElementById('listaLoading').style.display='none'; return; }
