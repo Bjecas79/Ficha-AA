@@ -508,15 +508,15 @@ async function init(){
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
     // Carregar dados de avaliação (Fitescola + Questão Aula) — query separada só para esta turma
-    // Carregar dados de avaliação — busca só o objeto avaliacao (muito mais pequeno que dados completo)
+    // Carregar dados de avaliação — busca só o objeto avaliacao
     const { data: avalRow } = await supa.from('dossier_data')
       .select('dados->avaliacao')
       .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
-    // DEBUG — mostrar no ecrã o que chegou
-    const dbgEl = document.getElementById('listaErr');
-    if(dbgEl) { dbgEl.className='err show'; dbgEl.textContent = `avalRow: ${JSON.stringify(avalRow).substring(0,300)} | avalKey1:${avalKey1} fitKey:${fitKey}`; }
     const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    const aval = avalRow?.avaliacao || avalRow || {};
+    const aval = avalRow?.avaliacao || {};
+    // DEBUG chaves
+    const dbgEl2 = document.getElementById('listaErr');
+    if(dbgEl2){ dbgEl2.className='err show'; dbgEl2.textContent=`chaves aval: ${Object.keys(aval).join(' | ')} || avalKey1:${avalKey1}`; }
     G.fitDados   = aval[fitKey]?.resultados  || {};
     G.fitDados1s = aval[fitKey1]?.resultados || {};
     G.avalDados1s = aval[avalKey1] || {};
