@@ -467,28 +467,26 @@ async function init(){
     if(!dd){
       const { data: allRows, error: errAll } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
       if(errAll){ showErr('listaErr',`Erro Supabase: ${errAll.message}`); document.getElementById('listaLoading').style.display='none'; return; }
-      if(!allRows || allRows.length===0){ showErr('listaErr',`Sem registos no dossier_data para este utilizador. (u:${userId})`); document.getElementById('listaLoading').style.display='none'; return; }
-      // log para diagnóstico
-      const turmasCadaRow = allRows.map(r=>(r.dados?.turmas||[]).map(t=>t.id).join(',')).join(' | ');
+      if(!allRows || allRows.length===0){ showErr('listaErr',`Sem dados guardados. Pede ao professor para abrir o dossier e guardar.`); document.getElementById('listaLoading').style.display='none'; return; }
+      // procurar em todos os registos — comparar id como string e como número
       for(const row of allRows){
         const turmas = row.dados?.turmas || [];
-        if(turmas.find(t => String(t.id) === String(turmaId))){
+        if(turmas.find(t => String(t.id) === String(turmaId) || t.id == turmaId)){
           dd = row; G.anoLetivo = row.ano_letivo || ''; break;
         }
       }
-      if(!dd){
-        dd = allRows[allRows.length - 1];
-        G.anoLetivo = dd?.ano_letivo || '';
-        // mostrar diagnóstico para debug
-        showErr('listaErr',`Turma não encontrada por id. turmaId procurado:${turmaId} | turmas nos registos:[${turmasCadaRow}] | a usar último registo (ano:${G.anoLetivo})`);
-        // não return — continua com o último registo
-      }
+      // último recurso: usar registo mais recente
+      if(!dd){ dd = allRows[allRows.length-1]; G.anoLetivo = dd?.ano_letivo||''; }
     }
-    if(!dd || !dd.dados){ showErr('listaErr',`Sem dados no registo encontrado. (t:${turmaId} u:${userId})`); document.getElementById('listaLoading').style.display='none'; return; }
+    if(!dd || !dd.dados){ showErr('listaErr',`Sem dados. Pede ao professor para abrir o dossier.`); document.getElementById('listaLoading').style.display='none'; return; }
     if(!dd.dados.turmas) dd.dados.turmas = [];
 
-    const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId));
-    if(!turma){ showErr('listaErr','Turma não encontrada.'); document.getElementById('listaLoading').style.display='none'; return; }
+    const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId) || t.id == turmaId);
+    if(!turma){ 
+      const idsDisponiveis = dd.dados.turmas.map(t=>`${t.nome}(${t.id})`).join(', ');
+      showErr('listaErr',`Turma não encontrada. Procurado id:${turmaId} | Disponíveis: ${idsDisponiveis||'nenhuma'}`); 
+      document.getElementById('listaLoading').style.display='none'; return; 
+    }
 
     G.turmaName = turma.nome||'';
     G.ano = turma.ano||'10º';
@@ -529,13 +527,18 @@ async function init(){
     const loginLogoSrc=document.querySelector('#screenLogin .box-logo img')?.src;
     if(loginLogoSrc){logoEl.src=loginLogoSrc;logoEl.style.display='block';}
 
-    // QR code a partir do URL atual
+    // QR code — usa o link curto da turma (parâmetro ?c= do URL atual)
     const qrCol=document.getElementById('listaQrCol');
     const qrDiv=document.getElementById('listaQrCanvas');
     if(qrDiv && typeof QRCode !== 'undefined'){
+      const params = new URLSearchParams(window.location.search);
+      const codeParam = params.get('c');
+      const qrUrl = codeParam
+        ? `https://bjecas79.github.io/Ficha-AA/ficha_aluno.html?c=${codeParam}`
+        : window.location.href;
       qrDiv.innerHTML='';
       new QRCode(qrDiv, {
-        text: window.location.href,
+        text: qrUrl,
         width: 148,
         height: 148,
         colorDark: '#1a2d4a',
