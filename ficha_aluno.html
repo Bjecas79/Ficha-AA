@@ -465,25 +465,26 @@ async function init(){
       if(dd1 && dd1.dados) dd = dd1;
     }
     if(!dd){
-      // fallback: percorrer todos os registos e encontrar o que tem esta turma
       const { data: allRows, error: errAll } = await supa.from('dossier_data').select('dados,ano_letivo').eq('user_id', userId);
-      if(allRows && allRows.length > 0){
-        // primeiro tenta match exacto por turma id
-        for(const row of allRows){
-          const turmas = row.dados?.turmas || [];
-          if(turmas.find(t => String(t.id) === String(turmaId))){
-            dd = row; G.anoLetivo = row.ano_letivo || ''; break;
-          }
-        }
-        // se ainda não encontrou, usa o registo mais recente (último guardado)
-        if(!dd){
-          dd = allRows[allRows.length - 1];
-          G.anoLetivo = dd?.ano_letivo || '';
+      if(errAll){ showErr('listaErr',`Erro Supabase: ${errAll.message}`); document.getElementById('listaLoading').style.display='none'; return; }
+      if(!allRows || allRows.length===0){ showErr('listaErr',`Sem registos no dossier_data para este utilizador. (u:${userId})`); document.getElementById('listaLoading').style.display='none'; return; }
+      // log para diagnóstico
+      const turmasCadaRow = allRows.map(r=>(r.dados?.turmas||[]).map(t=>t.id).join(',')).join(' | ');
+      for(const row of allRows){
+        const turmas = row.dados?.turmas || [];
+        if(turmas.find(t => String(t.id) === String(turmaId))){
+          dd = row; G.anoLetivo = row.ano_letivo || ''; break;
         }
       }
+      if(!dd){
+        dd = allRows[allRows.length - 1];
+        G.anoLetivo = dd?.ano_letivo || '';
+        // mostrar diagnóstico para debug
+        showErr('listaErr',`Turma não encontrada por id. turmaId procurado:${turmaId} | turmas nos registos:[${turmasCadaRow}] | a usar último registo (ano:${G.anoLetivo})`);
+        // não return — continua com o último registo
+      }
     }
-    if(!dd || !dd.dados){ showErr('listaErr',`Erro ao carregar dados. (t:${turmaId} u:${userId} ano:${G.anoLetivo})`); document.getElementById('listaLoading').style.display='none'; return; }
-    // se não tem turmas, criar array vazio para não crashar
+    if(!dd || !dd.dados){ showErr('listaErr',`Sem dados no registo encontrado. (t:${turmaId} u:${userId})`); document.getElementById('listaLoading').style.display='none'; return; }
     if(!dd.dados.turmas) dd.dados.turmas = [];
 
     const turma = dd.dados.turmas.find(t => String(t.id) === String(turmaId));
