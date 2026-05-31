@@ -513,10 +513,8 @@ async function init(){
       .select('dados->avaliacao')
       .eq('user_id', userId).eq('ano_letivo', G.anoLetivo).maybeSingle();
     const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    const aval = avalRow?.avaliacao || {};
-    // DEBUG chaves
-    const dbgEl2 = document.getElementById('listaErr');
-    if(dbgEl2){ dbgEl2.className='err show'; dbgEl2.textContent=`chaves aval: ${Object.keys(aval).join(' | ')} || avalKey1:${avalKey1}`; }
+    // Supabase com dados->avaliacao devolve {avaliacao:{...}} ou directamente o objecto
+    const aval = (avalRow?.avaliacao && typeof avalRow.avaliacao === 'object') ? avalRow.avaliacao : (avalRow || {});
     G.fitDados   = aval[fitKey]?.resultados  || {};
     G.fitDados1s = aval[fitKey1]?.resultados || {};
     G.avalDados1s = aval[avalKey1] || {};
