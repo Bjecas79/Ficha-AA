@@ -534,24 +534,31 @@ async function init(){
     const { data: fichas } = await supa.from('fichas_aa').select('nome_aluno,updated_at').eq('user_id', userId).eq('turma_id', turmaId).eq('semestre', semestre).eq('ano_letivo', G.anoLetivo);
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
-    // Carregar dados de avaliação — busca dados completos (sem filtro de ano para garantir)
-    const { data: avalFull } = await supa.from('dossier_data')
-      .select('dados')
-      .eq('user_id', userId)
-      .eq('ano_letivo', G.anoLetivo)
-      .maybeSingle();
-    // fallback: se não encontrou com ano, tenta sem filtro de ano
-    let avalDados = avalFull?.dados;
-    if(!avalDados){
-      const { data: avalAny } = await supa.from('dossier_data')
-        .select('dados').eq('user_id', userId)
-        .order('ano_letivo', {ascending:false}).limit(1).maybeSingle();
-      avalDados = avalAny?.dados;
+    // Carregar dados de avaliação — busca o sub-objeto avaliacao directamente
+    // para ter fitescola1s, fitescola2s, sem1 e sem2 todos disponíveis
+    let avalObj = {};
+    if(G.anoLetivo){
+      const { data: avalRow } = await supa.from('dossier_data')
+        .select('dados->avaliacao')
+        .eq('user_id', userId)
+        .eq('ano_letivo', G.anoLetivo)
+        .maybeSingle();
+      if(avalRow?.avaliacao) avalObj = avalRow.avaliacao;
     }
-    const semKey2 = semestre===1 ? 'fitescola1s' : 'fitescola2s';
-    const avalObj = avalDados?.avaliacao || {};
-    G.fitDados   = avalObj[fitKey]?.resultados  || {};
-    G.fitDados1s = avalObj[fitKey1]?.resultados || {};
+    // fallback: último registo disponível
+    if(!Object.keys(avalObj).length){
+      const { data: avalAny } = await supa.from('dossier_data')
+        .select('dados->avaliacao')
+        .eq('user_id', userId)
+        .order('ano_letivo', {ascending:false}).limit(1).maybeSingle();
+      if(avalAny?.avaliacao) avalObj = avalAny.avaliacao;
+    }
+    // fitescola 1ºS: tabela Fitescola 1ºS
+    const fitKey1s = `${turmaId}__fitescola1s`;
+    // fitescola 2ºS: tabela Fitescola 2ºS (só relevante no semestre 2)
+    const fitKey2s = `${turmaId}__fitescola2s`;
+    G.fitDados1s  = avalObj[fitKey1s]?.resultados || {};
+    G.fitDados    = semestre===2 ? (avalObj[fitKey2s]?.resultados || {}) : G.fitDados1s;
     G.avalDados1s = avalObj[avalKey1] || {};
     G.avalDados2s = avalObj[avalKey2] || {};
 
@@ -724,6 +731,8 @@ function preFill(){
   const sem = G.semestre;
 
   // FITescola — pré-preencher com dados do dossier (readonly)
+  // 1ºS: sempre importado da tabela Fitescola 1ºS (G.fitDados1s)
+  // 2ºS: importado da tabela Fitescola 2ºS (G.fitDados), apenas na ficha do 2º semestre
   fitescolaTests.forEach((_,i)=>{
     const el1s = document.getElementById(`fit-${i}-s1`);
     const el2s = document.getElementById(`fit-${i}-s2`);
@@ -737,16 +746,79 @@ function preFill(){
     }
   });
 
-  // Questão Aula — busca conhecClassif do 1ºS (classificação de conhecimentos do professor)
+  // Questão Aula
+  // 1ºS: importado de avalDados1s.conhecClassif (classificação de conhecimentos do professor, 1ºS)
+  // 2ºS: importado de avalDados2s.conhecClassif2s (coluna Class. 2ºS do dossier)
   const qa1 = G.avalDados1s?.conhecClassif?.[nome] ?? G.avalDados1s?.notas?.[nome] ?? G.avalDados1s?.questaoAula?.[nome] ?? '';
-  const qa2 = G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
+  const qa2 = G.avalDados2s?.conhecClassif2s?.[nome] ?? G.avalDados2s?.conhecClassif?.[nome] ?? G.avalDados2s?.notas?.[nome] ?? G.avalDados2s?.questaoAula?.[nome] ?? '';
 
-  // Tentar buscar da estrutura real do dossier
   const q1El = document.getElementById('questao-nota-s1');
   const q2El = document.getElementById('questao-nota-s2');
 
   if(q1El && qa1!==''){ q1El.value=qa1; q1El.readOnly=true; q1El.style.background='#fffbeb'; }
   if(q2El && sem===2 && qa2!==''){ q2El.value=qa2; q2El.readOnly=true; q2El.style.background='#fffbeb'; }
+
+  // Atividades Físicas 1ºS — pré-preencher a partir da tabela 1º Semestre do dossier
+  // Os títulos das atividades estão em avalDados1s.atividadesTitulos (array de 12)
+  // As notas estão em avalDados1s.ativNotas[nome] (array de 12, valores 0-3)
+  // Faz match por nome da atividade entre a lista do dossier e as listas fixas da ficha
+  if(sem===2){
+    const ativTitulos1s = G.avalDados1s?.atividadesTitulos || [];
+    const ativNotas1s   = G.avalDados1s?.ativNotas?.[nome] || [];
+    if(ativTitulos1s.length && ativNotas1s.length){
+      const allGroups = [
+        {prefix:'jdc', acts: jdcActivities},
+        {prefix:'gad', acts: gadActivities},
+        {prefix:'are', acts: areActivities},
+        {prefix:'out', acts: outrasActivities}
+      ];
+      ativTitulos1s.forEach((titulo, dossierIdx)=>{
+        if(!titulo) return;
+        const val = ativNotas1s[dossierIdx];
+        if(val===undefined || val==='' || val===null) return;
+        // Procurar na ficha qual o select que tem este título
+        allGroups.forEach(({prefix, acts})=>{
+          acts.forEach((actNome, actIdx)=>{
+            // Comparação case-insensitive e com trim
+            if(actNome.trim().toLowerCase() === titulo.trim().toLowerCase()){
+              const el = document.getElementById(`${prefix}${actIdx}-s1`);
+              if(el && String(val)!==''){
+                el.value = String(parseFloat(val));
+                el.disabled = true;
+                el.style.background = '#fffbeb';
+              }
+            }
+          });
+        });
+      });
+    }
+  }
+
+  // Atitudes e Valores 1ºS — pré-preencher a partir da tabela 1º Semestre do dossier
+  // Campos: atitResponsab (Responsabilidade) e atitExigencia (Exigência), ambos do sem1
+  if(sem===2){
+    const resp1s = G.avalDados1s?.atitResponsab?.[nome];
+    const exig1s = G.avalDados1s?.atitExigencia?.[nome];
+
+    if(resp1s !== undefined && resp1s !== ''){
+      const respEl = document.querySelector(`input[name="resp-s1"][value="${resp1s}"]`);
+      if(respEl){
+        respEl.checked = true;
+        respEl.closest('.sem-grid')?.classList.add('selected');
+        // Bloquear todos os radio do 1ºS de responsabilidade
+        document.querySelectorAll('input[name="resp-s1"]').forEach(r=>{ r.disabled=true; });
+      }
+    }
+    if(exig1s !== undefined && exig1s !== ''){
+      const exigEl = document.querySelector(`input[name="exig-s1"][value="${exig1s}"]`);
+      if(exigEl){
+        exigEl.checked = true;
+        exigEl.closest('.sem-grid')?.classList.add('selected');
+        // Bloquear todos os radio do 1ºS de exigência
+        document.querySelectorAll('input[name="exig-s1"]').forEach(r=>{ r.disabled=true; });
+      }
+    }
+  }
 }
 
 // ── CARREGAR SUBMISSÃO ANTERIOR ───────────────────────────────
