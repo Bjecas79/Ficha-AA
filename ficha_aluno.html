@@ -534,24 +534,25 @@ async function init(){
     const { data: fichas } = await supa.from('fichas_aa').select('nome_aluno,updated_at').eq('user_id', userId).eq('turma_id', turmaId).eq('semestre', semestre).eq('ano_letivo', G.anoLetivo);
     const submetidos = new Set((fichas||[]).map(f=>f.nome_aluno));
 
-    // Carregar dados de avaliação — busca o sub-objeto avaliacao directamente
-    // para ter fitescola1s, fitescola2s, sem1 e sem2 todos disponíveis
+    // Carregar dados de avaliação — busca o campo 'dados' completo para garantir
+    // compatibilidade com todas as versões do Supabase JS (o operador -> pode devolver
+    // null dependendo da versão do cliente). Extrai avaliacao em JS.
     let avalObj = {};
     if(G.anoLetivo){
       const { data: avalRow } = await supa.from('dossier_data')
-        .select('dados->avaliacao')
+        .select('dados')
         .eq('user_id', userId)
         .eq('ano_letivo', G.anoLetivo)
         .maybeSingle();
-      if(avalRow?.avaliacao) avalObj = avalRow.avaliacao;
+      if(avalRow?.dados?.avaliacao) avalObj = avalRow.dados.avaliacao;
     }
     // fallback: último registo disponível
     if(!Object.keys(avalObj).length){
       const { data: avalAny } = await supa.from('dossier_data')
-        .select('dados->avaliacao')
+        .select('dados')
         .eq('user_id', userId)
         .order('ano_letivo', {ascending:false}).limit(1).maybeSingle();
-      if(avalAny?.avaliacao) avalObj = avalAny.avaliacao;
+      if(avalAny?.dados?.avaliacao) avalObj = avalAny.dados.avaliacao;
     }
     // fitescola 1ºS: tabela Fitescola 1ºS
     const fitKey1s = `${turmaId}__fitescola1s`;
@@ -687,6 +688,9 @@ function doLogin(){
 
   const passLower = pass.toLowerCase();
   if(passLower === expectedPrimeiro || passLower === expectedCompleto || pass === dataNasc.replace(/-/g,'')){
+    // Guardar género e data de nascimento para usar no preFill (avaliação Fitescola)
+    G.genero   = (aluno?.genero||'').toUpperCase();
+    G.dataNasc = dataNasc;
     document.getElementById('screenLogin').style.display='none';
     abrirFicha();
   } else {
@@ -730,19 +734,30 @@ function preFill(){
   const nome = G.alunoNome;
   const sem = G.semestre;
 
-  // FITescola — pré-preencher com dados do dossier (readonly)
-  // 1ºS: sempre importado da tabela Fitescola 1ºS (G.fitDados1s)
-  // 2ºS: importado da tabela Fitescola 2ºS (G.fitDados), apenas na ficha do 2º semestre
+  // FITescola — pré-preencher com a avaliação (PM/ZS/PA) calculada a partir do
+  // resultado bruto do dossier, usando a mesma lógica das tabelas de referência oficiais.
+  // FIT_IDX_TO_ID mapeia o índice do select (0-4) para o testeId do dossier.
+  // fitEvalBadge() devolve '0'(PM), '0.5'(ZS) ou '1'(PA) — os valores do select da ficha.
+  const gen    = G.genero   || '';
+  const idade  = calcIdadeFit(G.dataNasc, G.anoLetivo);
+  function getFitAval(fitDados, alunoNome, idx){
+    if(!fitDados || !fitDados[alunoNome]) return '';
+    const testeId = FIT_IDX_TO_ID[idx];
+    const raw = fitDados[alunoNome][testeId];
+    if(raw===undefined || raw==='' || raw===null) return '';
+    return fitEvalBadge(testeId, raw, gen, idade);
+  }
+  // 1ºS: tabela Fitescola 1ºS; 2ºS: tabela Fitescola 2ºS
   fitescolaTests.forEach((_,i)=>{
     const el1s = document.getElementById(`fit-${i}-s1`);
     const el2s = document.getElementById(`fit-${i}-s2`);
     if(el1s){
-      const v = G.fitDados1s?.[nome]?.[i] ?? G.fitDados1s?.[nome]?.[fitescolaTests[i]] ?? '';
-      if(v!==undefined && v!=='') { el1s.value=v; el1s.disabled=true; el1s.style.background='#fffbeb'; }
+      const v = getFitAval(G.fitDados1s, nome, i);
+      if(v!=='') { el1s.value=v; el1s.disabled=true; el1s.style.background='#fffbeb'; }
     }
     if(el2s && sem===2){
-      const v2 = G.fitDados?.[nome]?.[i] ?? G.fitDados?.[nome]?.[fitescolaTests[i]] ?? '';
-      if(v2!==undefined && v2!=='') { el2s.value=v2; el2s.disabled=true; el2s.style.background='#fffbeb'; }
+      const v2 = getFitAval(G.fitDados, nome, i);
+      if(v2!=='') { el2s.value=v2; el2s.disabled=true; el2s.style.background='#fffbeb'; }
     }
   });
 
@@ -869,6 +884,70 @@ const jdcActivities = ['Andebol','Basquetebol','Futebol','Voleibol'];
 const gadActivities = ['Ginástica'];
 const areActivities = ['Dança'];
 const outrasActivities = ['Atletismo','Badminton','Corfebol','Hóquei em Campo/Floorbol','Orientação','Rugby','Softbol/Basebol','Ténis de Mesa','Ultimate Frisbee'];
+// ── FITESCOLA: tabelas de referência e avaliação ─────────────
+function calcIdadeFit(dataNasc, anoLetivo){
+  if(!dataNasc) return null;
+  const nasc=new Date(dataNasc);
+  if(isNaN(nasc)) return null;
+  const ano = anoLetivo ? anoLetivo.split('/')[0] : new Date().getFullYear();
+  const refDate=new Date(`${ano}-09-15`);
+  let i=refDate.getFullYear()-nasc.getFullYear();
+  const m=refDate.getMonth()-nasc.getMonth();
+  if(m<0||(m===0&&refDate.getDate()<nasc.getDate())) i--;
+  return i;
+}
+const FITESCOLA_TB={
+  F:{
+     9:{vaivem:[13,32],  abdom:[9,39],  flexBracos:[6,14],  iHoriz:[108.4,170.9], agilidade:[13.20,11.73], sentaAlcanca:[22.9,31.2]},
+    10:{vaivem:[16,35],  abdom:[12,39], flexBracos:[7,15],  iHoriz:[110.8,172.4], agilidade:[13.10,11.67], sentaAlcanca:[22.9,31.2]},
+    11:{vaivem:[20,39],  abdom:[15,46], flexBracos:[7,15],  iHoriz:[113.3,173.8], agilidade:[13.00,11.61], sentaAlcanca:[25.4,31.4]},
+    12:{vaivem:[22,43],  abdom:[18,53], flexBracos:[7,15],  iHoriz:[115.8,175.3], agilidade:[12.90,11.55], sentaAlcanca:[25.4,32.1]},
+    13:{vaivem:[25,45],  abdom:[18,57], flexBracos:[7,16],  iHoriz:[118.1,176.4], agilidade:[12.80,11.50], sentaAlcanca:[25.4,33.3]},
+    14:{vaivem:[27,47],  abdom:[18,59], flexBracos:[7,16],  iHoriz:[121.8,179.6], agilidade:[12.70,11.40], sentaAlcanca:[25.4,34.6]},
+    15:{vaivem:[29,48],  abdom:[18,62], flexBracos:[7,17],  iHoriz:[123.0,179.0], agilidade:[12.70,11.40], sentaAlcanca:[30.5,35.3]},
+    16:{vaivem:[32,50],  abdom:[18,63], flexBracos:[7,18],  iHoriz:[126.0,180.4], agilidade:[12.60,11.30], sentaAlcanca:[30.5,35.6]},
+    17:{vaivem:[35,51],  abdom:[18,65], flexBracos:[7,19],  iHoriz:[129.5,183.4], agilidade:[12.60,11.40], sentaAlcanca:[30.5,36.0]},
+    18:{vaivem:[37,50],  abdom:[18,66], flexBracos:[7,19],  iHoriz:[131.9,184.2], agilidade:[12.60,11.40], sentaAlcanca:[30.5,36.3]},
+  },
+  M:{
+     9:{vaivem:[13,47],  abdom:[9,47],  flexBracos:[6,17],  iHoriz:[102.1,160.0], agilidade:[13.10,11.98], sentaAlcanca:[20.3,29.3]},
+    10:{vaivem:[16,50],  abdom:[12,47], flexBracos:[7,21],  iHoriz:[110.2,170.2], agilidade:[12.80,11.65], sentaAlcanca:[20.3,29.3]},
+    11:{vaivem:[20,54],  abdom:[15,54], flexBracos:[8,21],  iHoriz:[119.0,180.4], agilidade:[12.50,11.38], sentaAlcanca:[20.3,28.9]},
+    12:{vaivem:[23,59],  abdom:[18,60], flexBracos:[10,21], iHoriz:[128.4,190.6], agilidade:[12.20,11.11], sentaAlcanca:[20.3,28.8]},
+    13:{vaivem:[28,67],  abdom:[21,66], flexBracos:[12,22], iHoriz:[135.4,197.3], agilidade:[12.00,10.90], sentaAlcanca:[20.3,29.2]},
+    14:{vaivem:[36,77],  abdom:[24,71], flexBracos:[14,24], iHoriz:[151.5,213.3], agilidade:[11.70,10.60], sentaAlcanca:[20.3,30.4]},
+    15:{vaivem:[42,85],  abdom:[24,71], flexBracos:[16,27], iHoriz:[165.4,224.4], agilidade:[11.20,10.20], sentaAlcanca:[20.3,31.9]},
+    16:{vaivem:[47,91],  abdom:[24,71], flexBracos:[18,29], iHoriz:[175.9,231.8], agilidade:[10.90, 9.90], sentaAlcanca:[20.3,33.5]},
+    17:{vaivem:[50,94],  abdom:[24,71], flexBracos:[18,32], iHoriz:[184.2,239.0], agilidade:[10.90, 9.90], sentaAlcanca:[20.3,34.5]},
+    18:{vaivem:[53,96],  abdom:[24,71], flexBracos:[18,34], iHoriz:[203.2,251.7], agilidade:[10.40, 9.49], sentaAlcanca:[20.3,35.0]},
+  }
+};
+// higher=true: maior é melhor; higher=false: menor é melhor (agilidade)
+// badge: atl→PA(1), ok→ZS(0.5), pm→PM(0)
+const FIT_TESTES_META = {
+  vaivem:     {higher:true},
+  abdom:      {higher:true},
+  flexBracos: {higher:true},
+  iHoriz:     {higher:true},
+  agilidade:  {higher:false},
+  sentaAlcanca:{higher:true},
+};
+function fitEvalBadge(testeId, val, gen, idade){
+  if(val===''||val===null||val===undefined) return '';
+  const raw=parseFloat(String(val).replace(',','.'));
+  if(isNaN(raw)) return '';
+  const idadeClamp=Math.max(9,Math.min(18,Math.round(idade||15)));
+  const ref=(gen==='M'||gen==='F')?(FITESCOLA_TB[gen]?.[idadeClamp]||FITESCOLA_TB[gen]?.[15]||null):null;
+  if(!ref||!ref[testeId]) return '';
+  const meta=FIT_TESTES_META[testeId];
+  if(!meta) return '';
+  const [refSaud,refAtl]=ref[testeId];
+  if(meta.higher){ if(raw>=refAtl) return '1'; if(raw>=refSaud) return '0.5'; return '0'; }
+  else           { if(raw<=refAtl) return '1'; if(raw<=refSaud) return '0.5'; return '0'; }
+}
+// Mapeamento: índice do select na ficha → testeId do dossier
+const FIT_IDX_TO_ID = ['vaivem','abdom','flexBracos','sentaAlcanca','iHoriz'];
+
 const fitescolaTests = ['Vai-Vem (resistência aeróbia)','Abdominais (força resistente abdominal)','Flexões de braços (força resistente superior)','Senta e alcança (flexibilidade)','Agilidade/impulsão horizontal'];
 const ieaOpts = [{val:3,label:'A — Avançado (Muito Bom)'},{val:2,label:'E — Elementar (Bom)'},{val:1,label:'I — Introdução (Razoável)'}];
 
