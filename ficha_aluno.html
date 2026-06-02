@@ -949,7 +949,7 @@ function fitEvalBadge(testeId, val, gen, idade){
 const FIT_IDX_TO_ID = ['vaivem','abdom','flexBracos','sentaAlcanca','iHoriz'];
 
 const fitescolaTests = ['Vai-Vem (resistência aeróbia)','Abdominais (força resistente abdominal)','Flexões de braços (força resistente superior)','Senta e alcança (flexibilidade)','Agilidade/impulsão horizontal'];
-const ieaOpts = [{val:3,label:'A — Avançado (Muito Bom)'},{val:2,label:'E — Elementar (Bom)'},{val:1,label:'I — Introdução (Razoável)'}];
+const ieaOpts = [{val:3,label:'A — Avançado'},{val:2.5,label:'E — Elementar (Bom+)'},{val:2,label:'E — Elementar (Bom)'},{val:1.5,label:'I — Introdução (Razoável+)'},{val:1,label:'I — Introdução (Razoável)'}];
 
 function buildFicha(){
   jdcActivities.forEach((a,i)=>buildActivityRow(document.getElementById('jdc-rows'),a,`jdc${i}`));
