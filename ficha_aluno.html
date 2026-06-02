@@ -774,9 +774,9 @@ function preFill(){
   if(q2El && sem===2 && qa2!==''){ q2El.value=qa2; q2El.readOnly=true; q2El.style.background='#fffbeb'; }
 
   // Atividades Físicas 1ºS — pré-preencher a partir da tabela 1º Semestre do dossier
-  // Os títulos das atividades estão em avalDados1s.atividadesTitulos (array de 12)
-  // As notas estão em avalDados1s.ativNotas[nome] (array de 12, valores 0-3)
-  // Faz match por nome da atividade entre a lista do dossier e as listas fixas da ficha
+  // Os títulos das atividades estão em avalDados1s.atividadesTitulos (array de 12+)
+  // As notas estão em avalDados1s.ativNotas[nome] (array de 12+, valores 0-3)
+  // Importa apenas as 3 melhores modalidades (nota mais alta; empate: mais à esquerda na tabela)
   if(sem===2){
     const ativTitulos1s = G.avalDados1s?.atividadesTitulos || [];
     const ativNotas1s   = G.avalDados1s?.ativNotas?.[nome] || [];
@@ -787,24 +787,46 @@ function preFill(){
         {prefix:'are', acts: areActivities},
         {prefix:'out', acts: outrasActivities}
       ];
+
+      // 1. Construir lista de candidatos: apenas atividades com nota preenchida e > 0,
+      //    preservando a ordem original da tabela do dossier (posição = desempate)
+      const candidatos = [];
       ativTitulos1s.forEach((titulo, dossierIdx)=>{
         if(!titulo) return;
         const val = ativNotas1s[dossierIdx];
         if(val===undefined || val==='' || val===null) return;
-        // Procurar na ficha qual o select que tem este título
+        const nota = parseFloat(val);
+        if(isNaN(nota) || nota <= 0) return;
+        // Verificar se existe select correspondente na ficha
+        let found = false;
         allGroups.forEach(({prefix, acts})=>{
+          if(found) return;
           acts.forEach((actNome, actIdx)=>{
-            // Comparação case-insensitive e com trim
+            if(found) return;
             if(actNome.trim().toLowerCase() === titulo.trim().toLowerCase()){
-              const el = document.getElementById(`${prefix}${actIdx}-s1`);
-              if(el && String(val)!==''){
-                el.value = String(parseFloat(val));
-                el.disabled = true;
-                el.style.background = '#fffbeb';
-              }
+              found = true;
+              candidatos.push({ prefix, actIdx, nota, dossierIdx });
             }
           });
         });
+      });
+
+      // 2. Ordenar por nota decrescente; em caso de empate, manter a ordem original
+      //    (dossierIdx crescente = mais à esquerda na tabela)
+      candidatos.sort((a, b) => {
+        if(b.nota !== a.nota) return b.nota - a.nota;
+        return a.dossierIdx - b.dossierIdx;
+      });
+
+      // 3. Preencher apenas as 3 melhores
+      const top3 = candidatos.slice(0, 3);
+      top3.forEach(({prefix, actIdx, nota})=>{
+        const el = document.getElementById(`${prefix}${actIdx}-s1`);
+        if(el){
+          el.value = String(nota);
+          el.disabled = true;
+          el.style.background = '#fffbeb';
+        }
       });
     }
   }
